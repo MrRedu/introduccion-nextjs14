@@ -1,12 +1,4 @@
-interface Restaurant {
-  id: string;
-  name: string;
-  image: string;
-  description: string;
-  address: string;
-  score: number;
-  ratings: number;
-}
+import type {Restaurant} from "./types";
 
 const restaurants: Restaurant[] = [
   {
@@ -122,12 +114,36 @@ const restaurants: Restaurant[] = [
   },
 ];
 
+//docs.google.com/spreadsheets/d/e/2PACX-1vTBf3XtSMzDCftbWR2MLy7uRTGJyRHbKbfry9TYLnm4L-adHAnOmIjc01z-5i29zz4oK36v3DgSaSxg/pub?output=csv
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const api = {
   list: async (): Promise<Restaurant[]> => {
-    await sleep(750);
+    // Obtenemos la información de Google Sheets en formato texto y la dividimos por líneas, nos saltamos la primera línea porque es el encabezado
+    const [, ...data] = await fetch(
+      `https://docs.google.com/spreadsheets/d/e/2PACX-1vTBf3XtSMzDCftbWR2MLy7uRTGJyRHbKbfry9TYLnm4L-adHAnOmIjc01z-5i29zz4oK36v3DgSaSxg/pub?output=csv`,
+      {next: {revalidate: 100}},
+    )
+      .then((res) => res.text())
+      .then((text) => text.split("\n"));
 
+    // Convertimos cada línea en un objeto Restaurant, asegúrate de que los campos no posean `,`
+    const restaurants: Restaurant[] = data.map((row) => {
+      const [id, name, description, address, score, ratings, image] = row.split(",");
+
+      return {
+        id,
+        name,
+        description,
+        address,
+        score: Number(score),
+        ratings: Number(ratings),
+        image,
+      };
+    });
+
+    // Lo retornamos
     return restaurants;
   },
   fetch: async (id: Restaurant["id"]): Promise<Restaurant> => {
@@ -140,6 +156,18 @@ const api = {
     }
 
     return restaurant;
+  },
+  search: async (query: string): Promise<Restaurant[]> => {
+    // Obtenemos los restaurantes
+    const results = await api.list().then((restaurants) =>
+      // Los filtramos por nombre
+      restaurants.filter((restaurant) =>
+        restaurant.name.toLowerCase().includes(query.toLocaleLowerCase()),
+      ),
+    );
+
+    // Los retornamos
+    return results;
   },
 };
 
