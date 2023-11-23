@@ -1,1 +1,1 @@
-# introduccion-nextjs14
+# Curso introductorio a Next.js 14 con App Router
